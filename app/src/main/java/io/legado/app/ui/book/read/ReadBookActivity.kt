@@ -143,7 +143,6 @@ class ReadBookActivity : BaseReadBookActivity(),
         }
     }
     private var menu: Menu? = null
-    private var autoPageJob: Job? = null
     private var backupJob: Job? = null
     private var keepScreenJon: Job? = null
     private var tts: TTS? = null
@@ -172,6 +171,9 @@ class ReadBookActivity : BaseReadBookActivity(),
     private val prevPageRunnable by lazy { Runnable { mouseWheelPage(PageDirection.PREV) } }
     private var bookChanged = false
     private var pageChanged = false
+    private var reloadContent = false
+    private val autoPageRenderer by lazy { SyncedRenderer { doAutoPage(it) } }
+    private var autoPageScrollOffset = 0.0
 
     //恢复跳转前进度对话框的交互结果
     private var confirmRestoreProcess: Boolean? = null
@@ -218,6 +220,10 @@ class ReadBookActivity : BaseReadBookActivity(),
         super.onPostCreate(savedInstanceState)
         viewModel.initData(intent) {
             upMenu()
+            if (reloadContent) {
+                reloadContent = false
+                ReadBook.loadContent(resetPageOffset = false)
+            }
         }
     }
 
@@ -225,6 +231,10 @@ class ReadBookActivity : BaseReadBookActivity(),
         super.onNewIntent(intent)
         viewModel.initData(intent ?: return) {
             upMenu()
+            if (reloadContent) {
+                reloadContent = false
+                ReadBook.loadContent(resetPageOffset = false)
+            }
         }
     }
 
@@ -952,7 +962,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     override fun autoPageStop() {
         if (isAutoPage) {
             isAutoPage = false
-            autoPageJob?.cancel()
+            autoPageRenderer.stop()
             binding.readView.invalidate()
             binding.readMenu.setAutoPage(false)
             upScreenTimeOut()
@@ -960,33 +970,36 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     private fun autoPagePlus() {
-        autoPageJob?.cancel()
-        autoPageJob = lifecycleScope.launch {
-            while (isActive) {
-                var delayMillis = ReadBookConfig.autoReadSpeed * 1000L / binding.readView.height
-                var scrollOffset = 1
-                if (delayMillis < 20) {
-                    var delayInt = delayMillis.toInt()
-                    if (delayInt == 0) delayInt = 1
-                    scrollOffset = 20 / delayInt
-                    delayMillis = 20
+        autoPageScrollOffset = 0.0
+        autoPageRenderer.start()
+    }
+
+    private fun doAutoPage(frameTime: Double) {
+        if (menuLayoutIsVisible) {
+            return
+        }
+        if (binding.readView.run { isScroll && pageDelegate?.isRunning == true }) {
+            return
+        }
+        val readTime = ReadBookConfig.autoReadSpeed * 1000.0
+        val height = binding.readView.height
+        autoPageScrollOffset += height / readTime * frameTime
+        if (autoPageScrollOffset < 1) {
+            return
+        }
+        val scrollOffset = autoPageScrollOffset.toInt()
+        autoPageScrollOffset -= scrollOffset
+        if (binding.readView.isScroll) {
+            binding.readView.curPage.scroll(-scrollOffset)
+        } else {
+            autoPageProgress += scrollOffset
+            if (autoPageProgress >= height) {
+                autoPageProgress = 0
+                if (!binding.readView.fillPage(PageDirection.NEXT)) {
+                    autoPageStop()
                 }
-                delay(delayMillis)
-                if (!menuLayoutIsVisible) {
-                    if (binding.readView.isScroll) {
-                        binding.readView.curPage.scroll(-scrollOffset)
-                    } else {
-                        autoPageProgress += scrollOffset
-                        if (autoPageProgress >= binding.readView.height) {
-                            autoPageProgress = 0
-                            if (!binding.readView.fillPage(PageDirection.NEXT)) {
-                                autoPageStop()
-                            }
-                        } else {
-                            binding.readView.invalidate()
-                        }
-                    }
-                }
+            } else {
+                binding.readView.invalidate()
             }
         }
     }
@@ -1200,6 +1213,7 @@ class ReadBookActivity : BaseReadBookActivity(),
                 SelectItem(getString(R.string.show), "show"),
                 SelectItem(getString(R.string.refresh), "refresh"),
                 SelectItem(getString(R.string.action_save), "save"),
+                SelectItem(getString(R.string.menu), "menu"),
                 SelectItem(getString(R.string.select_folder), "selectFolder")
             )
         )
@@ -1218,6 +1232,7 @@ class ReadBookActivity : BaseReadBookActivity(),
                     }
                 }
 
+                "menu" -> showActionMenu()
                 "selectFolder" -> selectImageDir.launch()
             }
             popupAction.dismiss()
@@ -1428,6 +1443,8 @@ class ReadBookActivity : BaseReadBookActivity(),
             if (it) {
                 if (isInitFinish) {
                     ReadBook.loadContent(resetPageOffset = false)
+                } else {
+                    reloadContent = true
                 }
             } else {
                 readView.upContent(resetPageOffset = false)
