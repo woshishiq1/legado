@@ -12,6 +12,7 @@ import io.legado.app.R
 import io.legado.app.constant.AppConst.appInfo
 import io.legado.app.constant.AppLog
 import io.legado.app.help.AppUpdate
+import io.legado.app.help.CrashHandler
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.ui.widget.dialog.TextDialog
@@ -61,6 +62,7 @@ class AboutFragment : PreferenceFragmentCompat() {
             "gzGzh" -> requireContext().sendToClip(getString(R.string.legado_gzh))
             "crashLog" -> showDialogFragment<CrashLogsDialog>()
             "saveLog" -> saveLog()
+            "createHeapDump" -> createHeapDump()
         }
         return super.onPreferenceTreeClick(preference)
     }
@@ -119,27 +121,67 @@ class AboutFragment : PreferenceFragmentCompat() {
     private fun saveLog() {
         Coroutine.async {
             val backupPath = AppConfig.backupPath ?: let {
-                toastOnUi("未设置备份目录")
-                return@async
-            }
-            val files = FileDoc.fromFile(File(appCtx.externalCacheDir, "logs")).list()
-            if (files.isNullOrEmpty()) {
-                toastOnUi("没有日志")
+                appCtx.toastOnUi("未设置备份目录")
                 return@async
             }
             val doc = FileDoc.fromUri(Uri.parse(backupPath), true)
-            doc.find("logs")?.delete()
-            val logsDoc = doc.createFolderIfNotExist("logs")
-            files.forEach { file ->
-                file.openInputStream().getOrNull()?.use { input ->
-                    logsDoc.createFileIfNotExist(file.name).openOutputStream().getOrNull()?.use {
-                        input.copyTo(it)
+            val files = FileDoc.fromFile(File(appCtx.externalCacheDir, "logs")).list()
+            if (!files.isNullOrEmpty()) {
+                doc.find("logs")?.delete()
+                val logsDoc = doc.createFolderIfNotExist("logs")
+                files.forEach { file ->
+                    file.openInputStream().getOrNull()?.use { input ->
+                        logsDoc.createFileIfNotExist(file.name).openOutputStream().getOrNull()
+                            ?.use {
+                                input.copyTo(it)
+                            }
                     }
                 }
             }
-            toastOnUi("已保存至备份目录")
+            val heapFile = FileDoc.fromFile(File(appCtx.externalCacheDir, "heapDump")).list()
+                ?.firstOrNull()
+            if (heapFile != null) {
+                doc.find("heapDump")?.delete()
+                val heapDumpDoc = doc.createFolderIfNotExist("heapDump")
+                heapFile.openInputStream().getOrNull()?.use { input ->
+                    heapDumpDoc.createFileIfNotExist(heapFile.name).openOutputStream().getOrNull()
+                        ?.use {
+                            input.copyTo(it)
+                        }
+                }
+            }
+            appCtx.toastOnUi("已保存至备份目录")
         }.onError {
             AppLog.put("保存日志出错\n${it.localizedMessage}", it, true)
+        }
+    }
+
+    private fun createHeapDump() {
+        Coroutine.async {
+            val backupPath = AppConfig.backupPath ?: let {
+                appCtx.toastOnUi("未设置备份目录")
+                return@async
+            }
+            appCtx.toastOnUi("开始创建堆转储")
+            System.gc()
+            CrashHandler.doHeapDump()
+            val heapFile = FileDoc.fromFile(File(appCtx.externalCacheDir, "heapDump")).list()
+                ?.firstOrNull() ?: let {
+                appCtx.toastOnUi("未找到堆转储文件")
+                return@async
+            }
+            val doc = FileDoc.fromUri(Uri.parse(backupPath), true)
+            doc.find("heapDump")?.delete()
+            val heapDumpDoc = doc.createFolderIfNotExist("heapDump")
+            heapFile.openInputStream().getOrNull()?.use { input ->
+                heapDumpDoc.createFileIfNotExist(heapFile.name).openOutputStream().getOrNull()
+                    ?.use {
+                        input.copyTo(it)
+                    }
+            }
+            appCtx.toastOnUi("已保存至备份目录")
+        }.onError {
+            AppLog.put("保存堆转储失败\n${it.localizedMessage}", it)
         }
     }
 
