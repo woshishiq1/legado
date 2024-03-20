@@ -8,6 +8,7 @@ import io.legado.app.help.config.AppConfig
 import splitties.init.appCtx
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.logging.ConsoleHandler
 import java.util.logging.FileHandler
 import java.util.logging.Level
 import java.util.logging.LogRecord
@@ -41,6 +42,7 @@ object LogUtils {
             fileHandler?.let {
                 addHandler(it)
             }
+            addHandler(consoleHandler)
         }
     }
 
@@ -67,15 +69,33 @@ object LogUtils {
             } else {
                 Level.OFF
             }
-        }
+        }.asynchronous()
+    }
+
+    private val consoleHandler by lazy {
+        ConsoleHandler().apply {
+            formatter = object : java.util.logging.Formatter() {
+                override fun format(record: LogRecord): String {
+                    // 设置文件输出格式
+                    return (getCurrentDateStr(TIME_PATTERN) + ": " + record.message + "\n")
+                }
+            }
+            level = if (AppConfig.recordLog) {
+                Level.INFO
+            } else {
+                Level.OFF
+            }
+        }.asynchronous()
     }
 
     fun upLevel() {
-        fileHandler?.level = if (AppConfig.recordLog) {
+        val level = if (AppConfig.recordLog) {
             Level.INFO
         } else {
             Level.OFF
         }
+        fileHandler?.level = level
+        consoleHandler.level = level
     }
 
     /**
