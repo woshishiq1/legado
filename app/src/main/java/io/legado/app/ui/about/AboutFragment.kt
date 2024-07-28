@@ -11,7 +11,7 @@ import androidx.preference.PreferenceFragmentCompat
 import io.legado.app.R
 import io.legado.app.constant.AppConst.appInfo
 import io.legado.app.constant.AppLog
-import io.legado.app.help.AppUpdate
+import io.legado.app.help.update.AppUpdate
 import io.legado.app.help.CrashHandler
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
@@ -88,20 +88,16 @@ class AboutFragment : PreferenceFragmentCompat() {
     private fun checkUpdate() {
         waitDialog.show()
         AppUpdate.gitHubUpdate?.run {
-            val job = if (AppConfig.updateToBeta) {
-                checkBeta(lifecycleScope)
-            } else {
-                check(lifecycleScope)
-            }
-            job.onSuccess {
-                showDialogFragment(
-                    UpdateDialog(it)
-                )
-            }.onError {
-                appCtx.toastOnUi("${getString(R.string.check_update)}\n${it.localizedMessage}")
-            }.onFinally {
-                waitDialog.dismiss()
-            }
+            check(lifecycleScope)
+                .onSuccess {
+                    showDialogFragment(
+                        UpdateDialog(it)
+                    )
+                }.onError {
+                    appCtx.toastOnUi("${getString(R.string.check_update)}\n${it.localizedMessage}")
+                }.onFinally {
+                    waitDialog.dismiss()
+                }
         }
     }
 
