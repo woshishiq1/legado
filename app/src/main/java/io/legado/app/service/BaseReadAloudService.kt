@@ -39,6 +39,7 @@ import io.legado.app.ui.book.read.page.entities.TextChapter
 import io.legado.app.utils.activityPendingIntent
 import io.legado.app.utils.broadcastPendingIntent
 import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.isVivoDevice
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
@@ -188,6 +189,8 @@ abstract class BaseReadAloudService : BaseService(),
             IntentAction.upTtsSpeechRate -> upSpeechRate(true)
             IntentAction.prevParagraph -> prevP()
             IntentAction.nextParagraph -> nextP()
+            IntentAction.prev -> prevChapter()
+            IntentAction.next -> nextChapter()
             IntentAction.addTimer -> addTimer()
             IntentAction.setTimer -> setTimer(intent.getIntExtra("minute", 0))
             IntentAction.stop -> stopSelf()
@@ -482,6 +485,16 @@ abstract class BaseReadAloudService : BaseService(),
         }
     }
 
+    private fun choiceMediaStyle(): androidx.media.app.NotificationCompat.MediaStyle {
+        val mediaStyle = androidx.media.app.NotificationCompat.MediaStyle()
+            .setShowActionsInCompactView(1, 2, 4)
+        if (isVivoDevice) {
+            //fix #4090 android 14 can not show play control in lock screen
+            mediaStyle.setMediaSession(mediaSessionCompat.sessionToken)
+        }
+        return mediaStyle
+    }
+
     private fun createNotification(): NotificationCompat.Builder {
         var nTitle: String = when {
             pause -> getString(R.string.read_aloud_pause)
@@ -514,6 +527,12 @@ abstract class BaseReadAloudService : BaseService(),
             .setSound(null)
             .setLights(0, 0, 0)
         builder.setLargeIcon(cover)
+        // 按钮定义：上一章、播放、停止、下一章、定时
+        builder.addAction(
+            R.drawable.ic_skip_previous,
+            getString(R.string.previous_chapter),
+            aloudServicePendingIntent(IntentAction.prev)
+        )
         if (pause) {
             builder.addAction(
                 R.drawable.ic_play_24dp,
@@ -533,14 +552,16 @@ abstract class BaseReadAloudService : BaseService(),
             aloudServicePendingIntent(IntentAction.stop)
         )
         builder.addAction(
+            R.drawable.ic_skip_next,
+            getString(R.string.next_chapter),
+            aloudServicePendingIntent(IntentAction.next)
+        )
+        builder.addAction(
             R.drawable.ic_time_add_24dp,
             getString(R.string.set_timer),
             aloudServicePendingIntent(IntentAction.addTimer)
         )
-        builder.setStyle(
-            androidx.media.app.NotificationCompat.MediaStyle()
-                .setShowActionsInCompactView(0, 1, 2)
-        )
+        builder.setStyle(choiceMediaStyle())
         return builder
     }
 
@@ -561,6 +582,11 @@ abstract class BaseReadAloudService : BaseService(),
     }
 
     abstract fun aloudServicePendingIntent(actionStr: String): PendingIntent?
+
+    open fun prevChapter() {
+        toLast = false
+        ReadBook.moveToPrevChapter(true, toLast = false)
+    }
 
     open fun nextChapter() {
         ReadBook.upReadTime()
