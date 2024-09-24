@@ -15,8 +15,6 @@ import android.view.animation.Animation
 import android.widget.FrameLayout
 import android.widget.SeekBar
 import androidx.appcompat.widget.PopupMenu
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import io.legado.app.R
@@ -41,6 +39,7 @@ import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.ConstraintModify
 import io.legado.app.utils.activity
+import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.gone
@@ -51,7 +50,6 @@ import io.legado.app.utils.openUrl
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.visible
-import splitties.views.bottomPadding
 import splitties.views.onClick
 import splitties.views.onLongClick
 
@@ -66,6 +64,7 @@ class ReadMenu @JvmOverloads constructor(
     private val callBack: CallBack get() = activity as CallBack
     private val binding = ViewReadMenuBinding.inflate(LayoutInflater.from(context), this, true)
     private var confirmSkipToChapter: Boolean = false
+    private var isMenuOutAnimating = false
     private val menuTopIn: Animation by lazy {
         loadAnimation(context, R.anim.anim_readbook_top_in)
     }
@@ -153,6 +152,7 @@ class ReadMenu @JvmOverloads constructor(
     }
     private val menuOutListener = object : Animation.AnimationListener {
         override fun onAnimationStart(animation: Animation) {
+            isMenuOutAnimating = true
             binding.vwMenuBg.setOnClickListener(null)
         }
 
@@ -161,6 +161,7 @@ class ReadMenu @JvmOverloads constructor(
             binding.titleBar.invisible()
             binding.bottomMenu.invisible()
             canShowMenu = false
+            isMenuOutAnimating = false
             onMenuOutEnd?.invoke()
             callBack.upSystemUiVisibility()
         }
@@ -235,11 +236,7 @@ class ReadMenu @JvmOverloads constructor(
         /**
          * 确保视图不被导航栏遮挡
          */
-        ViewCompat.setOnApplyWindowInsetsListener(this@ReadMenu) { _, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            root.bottomPadding = insets.bottom
-            windowInsets
-        }
+        applyNavigationBarPadding()
     }
 
     fun reset() {
@@ -315,6 +312,9 @@ class ReadMenu @JvmOverloads constructor(
     }
 
     fun runMenuOut(anim: Boolean = !AppConfig.isEInkMode, onMenuOutEnd: (() -> Unit)? = null) {
+        if (isMenuOutAnimating) {
+            return
+        }
         callBack.onMenuHide()
         this.onMenuOutEnd = onMenuOutEnd
         if (this.isVisible) {
