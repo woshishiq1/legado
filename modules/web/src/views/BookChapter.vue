@@ -132,21 +132,21 @@ const {
   readSettingsVisible,
   miniInterface,
   showContent,
-  config,
-  readingBook,
   bookProgress,
+  theme,
+  isNight,
 } = storeToRefs(store);
+
 const chapterPos = computed({
-  get: () => readingBook.value.chapterPos,
-  set: (value) => (readingBook.value.chapterPos = value),
+  get: () => store.readingBook.chapterPos,
+  set: (value) => (store.readingBook.chapterPos = value),
 });
 const chapterIndex = computed({
-  get: () => readingBook.value.index,
-  set: (value) => (readingBook.value.index = value),
+  get: () => store.readingBook.index,
+  set: (value) => (store.readingBook.index = value),
 });
 
-const theme = computed(() => config.value.theme);
-const infiniteLoading = computed(() => config.value.infiniteLoading);
+const infiniteLoading = computed(() => store.config.infiniteLoading);
 
 // 字体
 const fontFamily = computed(() => {
@@ -208,7 +208,6 @@ const rightBarTheme = computed(() => {
     display: miniInterface.value && !showToolBar.value ? "none" : "block",
   };
 });
-const isNight = computed(() => theme.value == 6);
 
 /**
  * pc移动端判断 最大阅读宽度修正
@@ -302,7 +301,10 @@ const toChapterPos = (pos) => {
 };
 
 // 60秒保存一次进度
-const saveBookProgressThrottle = useThrottleFn(() => store.saveBookProgress(), 60000)
+const saveBookProgressThrottle = useThrottleFn(
+  () => store.saveBookProgress(),
+  60000,
+);
 
 const onReadedLengthChange = (index, pos) => {
   saveReadingBookProgressToBrowser(index, pos);
@@ -431,10 +433,7 @@ const handleKeyPress = (event) => {
       event.stopPropagation();
       event.preventDefault();
       if (document.documentElement.scrollTop === 0) {
-        ElMessage({
-          message: "已到达页面顶部",
-          type: "warn",
-        });
+        ElMessage.warning("已到达页面顶部");
       } else {
         canJump = false;
         jump(0 - document.documentElement.clientHeight + 100, {
@@ -451,10 +450,7 @@ const handleKeyPress = (event) => {
           document.documentElement.scrollTop ===
         document.documentElement.scrollHeight
       ) {
-        ElMessage({
-          message: "已到达页面底部",
-          type: "warn",
-        });
+        ElMessage.warning("已到达页面底部");
       } else {
         canJump = false;
         jump(document.documentElement.clientHeight - 100, {
@@ -541,6 +537,41 @@ onUnmounted(() => {
   readSettingsVisible.value = false;
   popCataVisible.value = false;
   scrollObserver?.disconnect();
+  scrollObserver = null;
+});
+
+const addToBookShelfConfirm = async () => {
+  const bookUrl = sessionStorage.getItem("bookUrl");
+  const bookName = sessionStorage.getItem("bookName");
+  const isSeachBook = sessionStorage.getItem("isSeachBook");
+  const book = JSON.parse(localStorage.getItem(bookUrl));
+  sessionStorage.removeItem("isSeachBook");
+  // 阅读的是搜索的书籍 并未在书架
+  if (isSeachBook === "true") {
+
+    const addtoshelf = window.confirm(`是否将《${bookName}》放入书架？`);
+    if (!addtoshelf) await API.deleteBook(book);
+    
+/*      //按下返回键时不能触发 ElMessageBox.confirm
+         await ElMessageBox.confirm(
+      `是否将《${bookName}》放入书架？`,
+      "放入书架",
+      {
+        confirmButtonText: "确认",
+        cancelButtonText: "否",
+        type: "info"
+      }
+    ).then(() => {
+      //选择是，无动作
+    }).catch(async () => {
+      //选择否，删除书籍
+      await API.deleteBook(book);
+    }) */
+  }
+};
+onBeforeRouteLeave(async (to, from, next) => {
+  await addToBookShelfConfirm();
+  next();
 });
 </script>
 
