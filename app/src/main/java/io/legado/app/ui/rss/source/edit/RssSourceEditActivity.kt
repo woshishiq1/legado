@@ -6,7 +6,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.EditText
 import androidx.activity.viewModels
-import androidx.core.view.ViewCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.tabs.TabLayout
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
@@ -29,11 +28,9 @@ import io.legado.app.ui.widget.dialog.VariableDialog
 import io.legado.app.ui.widget.keyboard.KeyboardToolPop
 import io.legado.app.ui.widget.text.EditEntity
 import io.legado.app.utils.GSON
-import io.legado.app.utils.imeHeight
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.isTrue
 import io.legado.app.utils.launch
-import io.legado.app.utils.navigationBarHeight
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.share
@@ -45,10 +42,9 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import splitties.views.bottomPadding
 
 class RssSourceEditActivity :
-    VMBaseActivity<ActivityRssSourceEditBinding, RssSourceEditViewModel>(),
+    VMBaseActivity<ActivityRssSourceEditBinding, RssSourceEditViewModel>(false),
     KeyboardToolPop.CallBack,
     VariableDialog.Callback {
 
@@ -189,13 +185,6 @@ class RssSourceEditActivity :
                 setEditEntities(tab?.position)
             }
         })
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
-            val navigationBarHeight = windowInsets.navigationBarHeight
-            val imeHeight = windowInsets.imeHeight
-            binding.recyclerView.bottomPadding = if (imeHeight == 0) navigationBarHeight else 0
-            softKeyboardTool.initialPadding = imeHeight
-            windowInsets
-        }
     }
 
     private fun setEditEntities(tabPosition: Int?) {

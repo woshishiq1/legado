@@ -36,6 +36,7 @@ import io.legado.app.utils.startActivity
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
@@ -109,8 +110,12 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss),
 
     private fun initSearchView() {
         searchView.applyTint(primaryTextColor)
+        searchView.onActionViewExpanded()
         searchView.isSubmitButtonEnabled = true
         searchView.queryHint = getString(R.string.rss)
+        searchView.post {
+            searchView.clearFocus()
+        }
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 return false

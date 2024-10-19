@@ -128,8 +128,7 @@ class BookSourceDebugActivity : VMBaseActivity<ActivitySourceDebugBinding, BookS
                     return@launch
                 }
             }
-            @Suppress("USELESS_ELVIS")
-            exploreKinds?.map { it.title ?: "" }?.let { exploreKindTitles ->
+            exploreKinds?.map { it.title }?.let { exploreKindTitles ->
                 binding.textFx.onLongClick {
                     selector("选择发现", exploreKindTitles) { _, index ->
                         val explore = exploreKinds[index]

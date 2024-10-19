@@ -40,8 +40,6 @@ object Backup {
     }
     val zipFilePath = "${appCtx.externalFiles.absolutePath}${File.separator}tmp_backup.zip"
 
-    private const val TAG = "Backup"
-
     private val mutex = Mutex()
 
     private val backupFileNames by lazy {
@@ -104,16 +102,7 @@ object Backup {
         }
     }
 
-    suspend fun backupLocked(context: Context, path: String?) {
-        mutex.withLock {
-            withContext(IO) {
-                backup(context, path)
-            }
-        }
-    }
-
-    private suspend fun backup(context: Context, path: String?) {
-        LogUtils.d(TAG, "开始备份 path:$path")
+    suspend fun backup(context: Context, path: String?) {
         LocalConfig.lastBackup = System.currentTimeMillis()
         val aes = BackupAES()
         FileUtils.delete(backupPath)
@@ -207,11 +196,7 @@ object Backup {
                     copyBackup(File(path), backupFileName)
                 }
             }
-            try {
-                AppWebDav.backUpWebDav(zipFileName)
-            } catch (e: Exception) {
-                AppLog.put("上传备份至webdav失败\n$e", e)
-            }
+            AppWebDav.backUpWebDav(zipFileName)
         }
         FileUtils.delete(backupPath)
         FileUtils.delete(zipFilePath)
@@ -231,14 +216,10 @@ object Backup {
         coroutineContext.ensureActive()
         withContext(IO) {
             if (list.isNotEmpty()) {
-                LogUtils.d(TAG, "阅读备份 $fileName 列表大小 ${list.size}")
                 val file = FileUtils.createFileIfNotExist(path + File.separator + fileName)
                 file.outputStream().buffered().use {
                     GSON.writeToOutputStream(it, list)
                 }
-                LogUtils.d(TAG, "阅读备份 $fileName 写入大小 ${file.length()}")
-            } else {
-                LogUtils.d(TAG, "阅读备份 $fileName 列表为空")
             }
         }
     }

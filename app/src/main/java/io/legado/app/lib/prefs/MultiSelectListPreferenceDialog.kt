@@ -3,12 +3,10 @@ package io.legado.app.lib.prefs
 import android.app.Dialog
 import android.os.Bundle
 import androidx.appcompat.app.AlertDialog
-import androidx.core.view.forEach
 import androidx.preference.MultiSelectListPreferenceDialogFragmentCompat
 import androidx.preference.PreferenceDialogFragmentCompat
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.filletBackground
-import io.legado.app.utils.applyTint
 
 class MultiSelectListPreferenceDialog : MultiSelectListPreferenceDialogFragmentCompat() {
 
@@ -34,9 +32,6 @@ class MultiSelectListPreferenceDialog : MultiSelectListPreferenceDialogFragmentC
                 getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(accentColor)
                 getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(accentColor)
                 getButton(AlertDialog.BUTTON_NEUTRAL)?.setTextColor(accentColor)
-                listView?.forEach {
-                    it.applyTint(accentColor)
-                }
             }
         }
         return dialog

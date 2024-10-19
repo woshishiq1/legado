@@ -257,7 +257,6 @@ open class ScrollMultiAutoCompleteTextView @JvmOverloads constructor(
             }
         }
 
-        @Suppress("DEPRECATION")
         fun postOnAnimation() {
             if (mEatRunOnAnimationRequest) {
                 mReSchedulePostAnimationCallback = true

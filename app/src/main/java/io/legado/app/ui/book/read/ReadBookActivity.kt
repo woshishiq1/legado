@@ -111,6 +111,7 @@ import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isTrue
 import io.legado.app.utils.launch
 import io.legado.app.utils.navigationBarGravity
+import io.legado.app.utils.navigationBarHeight
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.observeEventSticky
 import io.legado.app.utils.postEvent
@@ -291,12 +292,12 @@ class ReadBookActivity : BaseReadBookActivity(),
         }
     }
 
-    override fun onNewIntent(intent: Intent) {
+    override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         if (!ReadBook.inBookshelf) {
             viewModel.removeFromBookshelf(null)
         }
-        viewModel.initData(intent)
+        viewModel.initData(intent ?: return)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -590,9 +591,9 @@ class ReadBookActivity : BaseReadBookActivity(),
     /**
      * 按键拦截,显示菜单
      */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        val keyCode = event.keyCode
-        val action = event.action
+    override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
+        val keyCode = event?.keyCode
+        val action = event?.action
         val isDown = action == 0
 
         if (keyCode == KeyEvent.KEYCODE_MENU) {
@@ -775,7 +776,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     override fun showTextActionMenu() {
         val navigationBarHeight =
             if (!ReadBookConfig.hideNavigationBar && navigationBarGravity == Gravity.BOTTOM)
-                binding.navigationBar.height else 0
+                navigationBarHeight else 0
         textActionMenu.show(
             binding.textMenuPosition,
             binding.root.height + navigationBarHeight,
@@ -851,7 +852,8 @@ class ReadBookActivity : BaseReadBookActivity(),
      */
     override fun onMenuActionFinally() = binding.run {
         textActionMenu.dismiss()
-        readView.cancelSelect()
+        readView.curPage.cancelSelect()
+        readView.isTextSelected = false
     }
 
     private fun speak(text: String) {
@@ -956,6 +958,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         success: (() -> Unit)?
     ) {
         lifecycleScope.launch {
+            binding.readView.cancelSelect()
             binding.readView.upContent(relativePosition, resetPageOffset)
             if (relativePosition == 0) {
                 upSeekBarProgress()
@@ -970,6 +973,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         resetPageOffset: Boolean,
         success: (() -> Unit)?
     ) = withContext(Main.immediate) {
+        binding.readView.cancelSelect()
         binding.readView.upContent(relativePosition, resetPageOffset)
         if (relativePosition == 0) {
             upSeekBarProgress()
@@ -987,12 +991,6 @@ class ReadBookActivity : BaseReadBookActivity(),
         bookChanged = true
         if (!ReadBook.inBookshelf) {
             viewModel.removeFromBookshelf { super.finish() }
-        }
-    }
-
-    override fun cancelSelect() {
-        runOnUiThread {
-            binding.readView.cancelSelect()
         }
     }
 
@@ -1186,8 +1184,11 @@ class ReadBookActivity : BaseReadBookActivity(),
             isShowingSearchResult = false
             binding.searchMenu.invalidate()
             binding.searchMenu.invisible()
-            ReadBook.clearSearchResult()
-            binding.readView.cancelSelect(true)
+            binding.readView.isTextSelected = false
+            ReadBook.curTextChapter?.clearSearchResult()
+            ReadBook.prevTextChapter?.clearSearchResult()
+            ReadBook.nextTextChapter?.clearSearchResult()
+            binding.readView.curPage.cancelSelect(true)
         }
     }
 
@@ -1340,7 +1341,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         }
         val navigationBarHeight =
             if (!ReadBookConfig.hideNavigationBar && navigationBarGravity == Gravity.BOTTOM)
-                binding.navigationBar.height else 0
+                navigationBarHeight else 0
         popupAction.showAtLocation(
             binding.readView, Gravity.BOTTOM or Gravity.LEFT, x.toInt(),
             binding.root.height + navigationBarHeight - y.toInt()
@@ -1355,17 +1356,11 @@ class ReadBookActivity : BaseReadBookActivity(),
             TEXT_COLOR -> {
                 setCurTextColor(color)
                 postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6, 9, 11))
-                if (AppConfig.readBarStyleFollowPage) {
-                    postEvent(EventBus.UPDATE_READ_ACTION_BAR, true)
-                }
             }
 
             BG_COLOR -> {
                 setCurBg(0, "#${color.hexString}")
                 postEvent(EventBus.UP_CONFIG, arrayListOf(1))
-                if (AppConfig.readBarStyleFollowPage) {
-                    postEvent(EventBus.UPDATE_READ_ACTION_BAR, true)
-                }
             }
 
             TIP_COLOR -> {

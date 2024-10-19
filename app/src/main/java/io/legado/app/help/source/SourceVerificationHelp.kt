@@ -19,8 +19,8 @@ object SourceVerificationHelp {
 
     private val waitTime = 1.minutes.inWholeNanoseconds
 
-    private fun getVerificationResultKey(source: BaseSource) = getVerificationResultKey(source.getKey())
-    private fun getVerificationResultKey(sourceKey: String) = "${sourceKey}_verificationResult"
+    private fun getKey(source: BaseSource) = getKey(source.getKey())
+    fun getKey(sourceKey: String) = "${sourceKey}_verificationResult"
 
     /**
      * 获取书源验证结果
@@ -30,27 +30,27 @@ object SourceVerificationHelp {
         source: BaseSource?,
         url: String,
         title: String,
-        useBrowser: Boolean,
-        refetchAfterSuccess: Boolean = true
+        useBrowser: Boolean
     ): String {
         source
             ?: throw NoStackTraceException("getVerificationResult parameter source cannot be null")
 
-        clearResult(source.getKey())
+        val key = getKey(source)
+        CacheManager.delete(key)
 
         if (!useBrowser) {
             appCtx.startActivity<VerificationCodeActivity> {
                 putExtra("imageUrl", url)
                 putExtra("sourceOrigin", source.getKey())
                 putExtra("sourceName", source.getTag())
-                IntentData.put(getVerificationResultKey(source), Thread.currentThread())
+                IntentData.put(key, Thread.currentThread())
             }
         } else {
-            startBrowser(source, url, title, true, refetchAfterSuccess)
+            startBrowser(source, url, title, true)
         }
 
         var waitUserInput = false
-        while (getResult(source.getKey()) == null) {
+        while (CacheManager.get(key) == null) {
             if (!waitUserInput) {
                 AppLog.putDebug("等待返回验证结果...")
                 waitUserInput = true
@@ -58,7 +58,7 @@ object SourceVerificationHelp {
             LockSupport.parkNanos(this, waitTime)
         }
 
-        return getResult(source.getKey())!!.let {
+        return CacheManager.get(key)!!.let {
             it.ifBlank {
                 throw NoStackTraceException("验证结果为空")
             }
@@ -73,38 +73,25 @@ object SourceVerificationHelp {
         source: BaseSource?,
         url: String,
         title: String,
-        saveResult: Boolean? = false,
-        refetchAfterSuccess: Boolean? = true
+        saveResult: Boolean? = false
     ) {
         source ?: throw NoStackTraceException("startBrowser parameter source cannot be null")
+        val key = getKey(source)
         appCtx.startActivity<WebViewActivity> {
             putExtra("title", title)
             putExtra("url", url)
             putExtra("sourceOrigin", source.getKey())
             putExtra("sourceName", source.getTag())
             putExtra("sourceVerificationEnable", saveResult)
-            putExtra("refetchAfterSuccess", refetchAfterSuccess)
             IntentData.put(url, source.getHeaderMap(true))
-            IntentData.put(getVerificationResultKey(source), Thread.currentThread())
+            IntentData.put(key, Thread.currentThread())
         }
     }
 
 
-    fun checkResult(sourceKey: String) {
-        getResult(sourceKey) ?: setResult(sourceKey, "")
-        val thread = IntentData.get<Thread>(getVerificationResultKey(sourceKey))
+    fun checkResult(key: String) {
+        CacheManager.get(key) ?: CacheManager.putMemory(key, "")
+        val thread = IntentData.get<Thread>(key)
         LockSupport.unpark(thread)
-    }
-
-    fun setResult(sourceKey: String, result: String?) {
-        CacheManager.putMemory(getVerificationResultKey(sourceKey), result ?: "")
-    }
-
-    fun getResult(sourceKey: String): String? {
-        return CacheManager.get(getVerificationResultKey(sourceKey))
-    }
-
-    fun clearResult(sourceKey: String) {
-        CacheManager.delete(getVerificationResultKey(sourceKey))
     }
 }

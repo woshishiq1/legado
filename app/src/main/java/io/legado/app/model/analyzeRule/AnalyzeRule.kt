@@ -2,6 +2,7 @@ package io.legado.app.model.analyzeRule
 
 import android.text.TextUtils
 import androidx.annotation.Keep
+import com.script.ScriptBindings
 import com.script.buildScriptBindings
 import com.script.rhino.RhinoScriptEngine
 import io.legado.app.constant.AppPattern.JS_PATTERN
@@ -30,6 +31,7 @@ import java.net.URL
 import java.util.regex.Pattern
 import kotlin.collections.component1
 import kotlin.collections.component2
+import kotlin.collections.set
 import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -61,6 +63,10 @@ class AnalyzeRule(
     private var analyzeByJSoup: AnalyzeByJSoup? = null
     private var analyzeByJSonPath: AnalyzeByJSonPath? = null
 
+    private var objectChangedXP = false
+    private var objectChangedJS = false
+    private var objectChangedJP = false
+
     private val stringRuleCache = hashMapOf<String, List<SourceRule>>()
 
     private var coroutineContext: CoroutineContext = EmptyCoroutineContext
@@ -74,9 +80,9 @@ class AnalyzeRule(
             else -> content.toString().isJson()
         }
         setBaseUrl(baseUrl)
-        analyzeByXPath = null
-        analyzeByJSoup = null
-        analyzeByJSonPath = null
+        objectChangedXP = true
+        objectChangedJS = true
+        objectChangedJP = true
         return this
     }
 
@@ -108,8 +114,9 @@ class AnalyzeRule(
         return if (o != content) {
             AnalyzeByXPath(o)
         } else {
-            if (analyzeByXPath == null) {
+            if (analyzeByXPath == null || objectChangedXP) {
                 analyzeByXPath = AnalyzeByXPath(content!!)
+                objectChangedXP = false
             }
             analyzeByXPath!!
         }
@@ -122,8 +129,9 @@ class AnalyzeRule(
         return if (o != content) {
             AnalyzeByJSoup(o)
         } else {
-            if (analyzeByJSoup == null) {
+            if (analyzeByJSoup == null || objectChangedJS) {
                 analyzeByJSoup = AnalyzeByJSoup(content!!)
+                objectChangedJS = false
             }
             analyzeByJSoup!!
         }
@@ -136,8 +144,9 @@ class AnalyzeRule(
         return if (o != content) {
             AnalyzeByJSonPath(o)
         } else {
-            if (analyzeByJSonPath == null) {
+            if (analyzeByJSonPath == null || objectChangedJP) {
                 analyzeByJSonPath = AnalyzeByJSonPath(content!!)
+                objectChangedJP = false
             }
             analyzeByJSonPath!!
         }
@@ -442,10 +451,15 @@ class AnalyzeRule(
     /**
      * getString 类规则缓存
      */
-    private fun splitSourceRuleCacheString(ruleStr: String?): List<SourceRule> {
+    fun splitSourceRuleCacheString(ruleStr: String?): List<SourceRule> {
         if (ruleStr.isNullOrEmpty()) return emptyList()
-        return stringRuleCache.getOrPut(ruleStr) {
-            splitSourceRule(ruleStr)
+        val cacheRule = stringRuleCache[ruleStr]
+        return if (cacheRule != null) {
+            cacheRule
+        } else {
+            val rules = splitSourceRule(ruleStr)
+            stringRuleCache[ruleStr] = rules
+            rules
         }
     }
 

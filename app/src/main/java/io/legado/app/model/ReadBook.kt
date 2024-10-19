@@ -193,12 +193,6 @@ object ReadBook : CoroutineScope by MainScope() {
         nextTextChapter = null
     }
 
-    fun clearSearchResult() {
-        curTextChapter?.clearSearchResult()
-        prevTextChapter?.clearSearchResult()
-        nextTextChapter?.clearSearchResult()
-    }
-
     fun uploadProgress() {
         book?.let {
             launch(IO) {
@@ -236,7 +230,6 @@ object ReadBook : CoroutineScope by MainScope() {
                 hasNextPage = true
                 it.getPage(durPageIndex)?.removePageAloudSpan()
                 durChapterPos = nextPagePos
-                callBack?.cancelSelect()
                 callBack?.upContent()
                 saveRead(true)
             }
@@ -773,7 +766,6 @@ object ReadBook : CoroutineScope by MainScope() {
                 appDb.bookChapterDao.insert(*cList.toTypedArray())
                 saveRead()
                 chapterSize = cList.size
-                simulatedChapterSize = book.simulatedTotalChapterNum()
                 nextTextChapter ?: loadContent(durChapterIndex + 1)
             }
         }
@@ -892,8 +884,6 @@ object ReadBook : CoroutineScope by MainScope() {
         fun upPageAnim(upRecorder: Boolean = false)
 
         fun notifyBookChanged()
-
-        fun cancelSelect()
     }
 
 }

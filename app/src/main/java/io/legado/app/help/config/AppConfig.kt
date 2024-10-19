@@ -453,9 +453,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val mediaButtonOnExit get() = appCtx.getPrefBoolean("mediaButtonOnExit", true)
 
-    val readAloudByMediaButton
-        get() = appCtx.getPrefBoolean(PreferKey.readAloudByMediaButton, false)
-
     val replaceEnableDefault get() = appCtx.getPrefBoolean(PreferKey.replaceEnableDefault, true)
 
     val webDavDir get() = appCtx.getPrefString(PreferKey.webDavDir, "legado")
@@ -469,10 +466,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val showAddToShelfAlert get() = appCtx.getPrefBoolean(PreferKey.showAddToShelfAlert, true)
 
     val ignoreAudioFocus get() = appCtx.getPrefBoolean(PreferKey.ignoreAudioFocus, false)
-
-    var pauseReadAloudWhilePhoneCalls
-        get() = appCtx.getPrefBoolean(PreferKey.pauseReadAloudWhilePhoneCalls, false)
-        set(value) = appCtx.putPrefBoolean(PreferKey.pauseReadAloudWhilePhoneCalls, value)
 
     val onlyLatestBackup get() = appCtx.getPrefBoolean(PreferKey.onlyLatestBackup, true)
 

@@ -7,8 +7,9 @@ import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.book.addType
+import io.legado.app.help.book.getAllBookType
 import io.legado.app.help.book.getBookType
-import io.legado.app.help.book.removeAllBookType
+import io.legado.app.help.book.removeType
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.http.StrResponse
 import io.legado.app.model.Debug
@@ -148,7 +149,7 @@ object WebBook {
         book: Book,
         canReName: Boolean = true,
     ): Book {
-        book.removeAllBookType()
+        book.removeType(bookSource.getAllBookType())
         book.addType(bookSource.getBookType())
         if (!book.infoHtml.isNullOrEmpty()) {
             BookInfo.analyzeBookInfo(
@@ -226,7 +227,7 @@ object WebBook {
         book: Book,
         runPerJs: Boolean = false
     ): Result<List<BookChapter>> {
-        book.removeAllBookType()
+        book.removeType(bookSource.getAllBookType())
         book.addType(bookSource.getBookType())
         return kotlin.runCatching {
             if (runPerJs) {

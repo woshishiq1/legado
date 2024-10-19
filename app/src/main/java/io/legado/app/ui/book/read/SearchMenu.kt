@@ -48,7 +48,6 @@ class SearchMenu @JvmOverloads constructor(
         Selector.colorBuild().setDefaultColor(bgColor)
             .setPressedColor(ColorUtils.darkenColor(bgColor)).create()
     private var onMenuOutEnd: (() -> Unit)? = null
-    private var isMenuOutAnimating = false
 
     private val searchResultList: MutableList<SearchResult> = mutableListOf()
     private var currentSearchResultIndex: Int = -1
@@ -95,18 +94,18 @@ class SearchMenu @JvmOverloads constructor(
 
     fun runMenuIn() {
         this.visible()
-        binding.llBottomMenu.visible()
+        binding.llSearchBaseInfo.visible()
+        binding.llBottomBg.visible()
         binding.vwMenuBg.visible()
-        binding.llBottomMenu.startAnimation(menuBottomIn)
+        binding.llSearchBaseInfo.startAnimation(menuBottomIn)
+        binding.llBottomBg.startAnimation(menuBottomIn)
     }
 
     fun runMenuOut(onMenuOutEnd: (() -> Unit)? = null) {
-        if (isMenuOutAnimating) {
-            return
-        }
         this.onMenuOutEnd = onMenuOutEnd
         if (this.isVisible) {
-            binding.llBottomMenu.startAnimation(menuBottomOut)
+            binding.llSearchBaseInfo.startAnimation(menuBottomOut)
+            binding.llBottomBg.startAnimation(menuBottomOut)
         }
     }
 
@@ -217,13 +216,12 @@ class SearchMenu @JvmOverloads constructor(
         //隐藏菜单
         menuBottomOut.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationStart(animation: Animation) {
-                isMenuOutAnimating = true
                 binding.vwMenuBg.setOnClickListener(null)
             }
 
             override fun onAnimationEnd(animation: Animation) {
-                isMenuOutAnimating = false
-                binding.llBottomMenu.invisible()
+                binding.llSearchBaseInfo.invisible()
+                binding.llBottomBg.invisible()
                 binding.vwMenuBg.invisible()
                 binding.vwMenuBg.setOnClickListener { runMenuOut() }
 

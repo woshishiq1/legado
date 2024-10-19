@@ -15,6 +15,7 @@ import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.offline.DefaultDownloaderFactory
 import androidx.media3.exoplayer.offline.DownloadRequest
@@ -47,6 +48,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -67,7 +69,9 @@ import kotlin.coroutines.coroutineContext
 class HttpReadAloudService : BaseReadAloudService(),
     Player.Listener {
     private val exoPlayer: ExoPlayer by lazy {
-        ExoPlayer.Builder(this).build()
+        ExoPlayer.Builder(this)
+            .setLoadControl(CustomLoadControl())
+            .build()
     }
     private val ttsFolderPath: String by lazy {
         cacheDir.absolutePath + File.separator + "httpTTS" + File.separator
@@ -92,10 +96,24 @@ class HttpReadAloudService : BaseReadAloudService(),
     private var downloadErrorNo: Int = 0
     private var playErrorNo = 0
     private val downloadTaskActiveLock = Mutex()
+    private var bufferedPercentage = 0
 
     override fun onCreate() {
         super.onCreate()
         exoPlayer.addListener(this)
+        initBufferedPercentageUpdate()
+    }
+
+    private fun initBufferedPercentageUpdate() {
+        lifecycleScope.launch {
+            while (isActive) {
+                bufferedPercentage = exoPlayer.bufferedPercentage
+                when (exoPlayer.playbackState) {
+                    Player.STATE_BUFFERING -> delay(10)
+                    else -> delay(1000)
+                }
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -329,8 +347,7 @@ class HttpReadAloudService : BaseReadAloudService(),
                     speakSpeed = speechRate,
                     source = httpTts,
                     headerMapF = httpTts.getHeaderMap(true),
-                    readTimeout = 300 * 1000L,
-                    coroutineContext = coroutineContext
+                    readTimeout = 300 * 1000L
                 )
                 var response = analyzeUrl.getResponseAwait()
                 coroutineContext.ensureActive()
@@ -575,6 +592,26 @@ class HttpReadAloudService : BaseReadAloudService(),
     inner class CustomLoadErrorHandlingPolicy : DefaultLoadErrorHandlingPolicy(0) {
         override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
             return C.TIME_UNSET
+        }
+    }
+
+    inner class CustomLoadControl : DefaultLoadControl() {
+        override fun shouldStartPlayback(
+            timeline: Timeline,
+            mediaPeriodId: MediaSource.MediaPeriodId,
+            bufferedDurationUs: Long,
+            playbackSpeed: Float,
+            rebuffering: Boolean,
+            targetLiveOffsetUs: Long
+        ): Boolean {
+            return super.shouldStartPlayback(
+                timeline,
+                mediaPeriodId,
+                bufferedDurationUs,
+                playbackSpeed,
+                rebuffering,
+                targetLiveOffsetUs
+            ) || bufferedPercentage == 100
         }
     }
 

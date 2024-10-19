@@ -267,9 +267,9 @@ object CacheBook {
             waitDownloadSet.remove(chapterIndex)
             onDownloadSet.add(chapterIndex)
             if (BookHelp.hasContent(book, chapter)) {
-                Coroutine.async(scope, context, executeContext = context) {
+                Coroutine.async(executeContext = context) {
                     BookHelp.getContent(book, chapter)?.let {
-                        BookHelp.saveImages(bookSource, book, chapter, it, 1)
+                        BookHelp.saveImages(bookSource, book, chapter, it)
                     }
                 }.onSuccess {
                     onSuccess(chapter)

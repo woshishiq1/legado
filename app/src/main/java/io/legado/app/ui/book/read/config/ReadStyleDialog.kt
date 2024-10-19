@@ -15,7 +15,6 @@ import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogReadBookStyleBinding
 import io.legado.app.databinding.ItemReadStyleBinding
-import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.accentColor
@@ -170,9 +169,6 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
             styleAdapter.notifyItemChanged(oldIndex)
             styleAdapter.notifyItemChanged(index)
             postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
-            if (AppConfig.readBarStyleFollowPage) {
-                postEvent(EventBus.UPDATE_READ_ACTION_BAR, true)
-            }
         }
     }
 

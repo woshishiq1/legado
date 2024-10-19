@@ -49,7 +49,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         loadMoreView.startLoad()
         loadMoreView.setOnClickListener {
             if (!loadMoreView.isLoading) {
-                scrollToBottom(true)
+                loadMoreView.hasMore()
+                scrollToBottom()
             }
         }
         binding.recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -62,9 +63,9 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         })
     }
 
-    private fun scrollToBottom(forceLoad: Boolean = false) {
-        if ((loadMoreView.hasMore && !loadMoreView.isLoading) || forceLoad) {
-            loadMoreView.hasMore()
+    private fun scrollToBottom() {
+        if (loadMoreView.hasMore && !loadMoreView.isLoading) {
+            loadMoreView.startLoad()
             viewModel.explore()
         }
     }
@@ -73,7 +74,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         loadMoreView.stopLoad()
         if (books.isEmpty() && adapter.isEmpty()) {
             loadMoreView.noMore(getString(R.string.empty))
-        } else if (adapter.getActualItemCount() == books.size) {
+        } else if (adapter.itemCount == books.size) {
             loadMoreView.noMore()
         } else {
             adapter.setItems(books)

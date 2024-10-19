@@ -6,7 +6,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ActivityInfo
-import android.content.pm.ApplicationInfo
 import android.content.res.Configuration
 import android.os.Build
 import com.github.liuyueyi.quick.transfer.constants.TransType
@@ -53,13 +52,13 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        CrashHandler(this)
         LogUtils.d("App", "onCreate")
         LogUtils.logDeviceInfo()
         if (isDebuggable) {
             ThreadUtils.setThreadAssertsDisabledForTesting(true)
         }
         oldConfig = Configuration(resources.configuration)
+        CrashHandler(this)
         //预下载Cronet so
         Cronet.preDownload()
         createNotificationChannels()
@@ -84,6 +83,7 @@ class App : Application() {
                 val clearTime = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)
                 appDb.searchBookDao.clearExpired(clearTime)
             }
+            appDb.bookDao.deleteNotShelfBook()
             RuleBigDataHelp.clearInvalid()
             BookHelp.clearInvalidCache()
             Backup.clearCache()
@@ -129,13 +129,8 @@ class App : Application() {
      */
     private fun installGmsTlsProvider(context: Context) {
         try {
-            val gmsPackageName = "com.google.android.gms"
-            val appInfo = packageManager.getApplicationInfo(gmsPackageName, 0)
-            if ((appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0) {
-                return
-            }
             val gms = context.createPackageContext(
-                gmsPackageName,
+                "com.google.android.gms",
                 CONTEXT_INCLUDE_CODE or CONTEXT_IGNORE_SECURITY
             )
             gms.classLoader
@@ -166,7 +161,7 @@ class App : Application() {
         val readAloudChannel = NotificationChannel(
             channelIdReadAloud,
             getString(R.string.read_aloud),
-            NotificationManager.IMPORTANCE_HIGH
+            NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
             enableLights(false)
             enableVibration(false)

@@ -57,6 +57,7 @@ class VerificationCodeDialog() : BaseDialogFragment(R.layout.dialog_verification
     }
 
     private var sourceOrigin: String? = null
+    private var key = ""
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?): Unit = binding.run {
         initMenu()
@@ -64,6 +65,7 @@ class VerificationCodeDialog() : BaseDialogFragment(R.layout.dialog_verification
         toolBar.setBackgroundColor(primaryColor)
         toolBar.subtitle = arguments.getString("sourceName")
         sourceOrigin = arguments.getString("sourceOrigin")
+        key = SourceVerificationHelp.getKey(sourceOrigin!!)
         val imageUrl = arguments.getString("imageUrl") ?: return@run
         loadImage(imageUrl, sourceOrigin)
         verificationCodeImageView.setOnClickListener {
@@ -101,7 +103,7 @@ class VerificationCodeDialog() : BaseDialogFragment(R.layout.dialog_verification
                     transition: Transition<in Bitmap>?
                 ) {
                     view ?: return
-                    val bitmap = resource.copy(resource.config ?: Bitmap.Config.ARGB_8888, true)
+                    val bitmap = resource.copy(resource.config, true)
                     ImageProvider.bitmapLruCache.put(url, bitmap)
                     binding.verificationCodeImageView.setImageBitmap(bitmap)
                 }
@@ -117,7 +119,7 @@ class VerificationCodeDialog() : BaseDialogFragment(R.layout.dialog_verification
         when (item.itemId) {
             R.id.menu_ok -> {
                 val verificationCode = binding.verificationCode.text.toString()
-                SourceVerificationHelp.setResult(sourceOrigin!!, verificationCode)
+                CacheManager.putMemory(key, verificationCode)
                 dismiss()
             }
         }
@@ -125,7 +127,7 @@ class VerificationCodeDialog() : BaseDialogFragment(R.layout.dialog_verification
     }
 
     override fun onDestroy() {
-        SourceVerificationHelp.checkResult(sourceOrigin!!)
+        SourceVerificationHelp.checkResult(key)
         super.onDestroy()
         activity?.finish()
     }

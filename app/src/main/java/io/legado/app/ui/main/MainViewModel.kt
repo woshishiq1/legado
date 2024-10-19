@@ -3,7 +3,6 @@ package io.legado.app.ui.main
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import androidx.recyclerview.widget.RecyclerView.RecycledViewPool
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppLog
@@ -53,12 +52,6 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     val onUpBooksLiveData = MutableLiveData<Int>()
     private var upTocJob: Job? = null
     private var cacheBookJob: Job? = null
-    val booksListRecycledViewPool = RecycledViewPool().apply {
-        setMaxRecycledViews(0, 30)
-    }
-    val booksGridRecycledViewPool = RecycledViewPool().apply {
-        setMaxRecycledViews(0, 100)
-    }
 
     override fun onCleared() {
         super.onCleared()
@@ -247,12 +240,6 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     fun restoreWebDav(name: String) {
         execute {
             AppWebDav.restoreWebDav(name)
-        }
-    }
-
-    fun deleteNotShelfBook() {
-        execute {
-            appDb.bookDao.deleteNotShelfBook()
         }
     }
 

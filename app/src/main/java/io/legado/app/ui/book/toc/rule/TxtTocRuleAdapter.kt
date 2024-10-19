@@ -130,10 +130,6 @@ class TxtTocRuleAdapter(context: Context, private val callBack: CallBack) :
         }
     }
 
-    override fun onCurrentListChanged() {
-        callBack.upCountView()
-    }
-
     private fun showMenu(view: View, position: Int) {
         val source = getItem(position) ?: return
         val popupMenu = PopupMenu(context, view)

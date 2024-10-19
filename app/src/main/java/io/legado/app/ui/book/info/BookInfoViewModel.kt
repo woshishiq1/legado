@@ -29,7 +29,6 @@ import io.legado.app.help.book.removeType
 import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.webdav.ObjectNotFoundException
-import io.legado.app.model.AudioPlay
 import io.legado.app.model.BookCover
 import io.legado.app.model.ReadBook
 import io.legado.app.model.analyzeRule.AnalyzeUrl
@@ -405,15 +404,12 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 book.order = appDb.bookDao.minOrder - 1
             }
             appDb.bookDao.getBook(book.name, book.author)?.let {
-                book.durChapterIndex = it.durChapterIndex
                 book.durChapterPos = it.durChapterPos
                 book.durChapterTitle = it.durChapterTitle
             }
             book.save()
-            if (ReadBook.book?.isSameNameAuthor(book) == true) {
+            if (ReadBook.book?.name == book.name && ReadBook.book?.author == book.author) {
                 ReadBook.book = book
-            } else if (AudioPlay.book?.isSameNameAuthor(book) == true) {
-                AudioPlay.book = book
             }
         }.onSuccess {
             success?.invoke()
@@ -438,14 +434,8 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                     book.order = appDb.bookDao.minOrder - 1
                 }
                 appDb.bookDao.getBook(book.name, book.author)?.let {
-                    book.durChapterIndex = it.durChapterIndex
                     book.durChapterPos = it.durChapterPos
                     book.durChapterTitle = it.durChapterTitle
-                }
-                if (ReadBook.book?.isSameNameAuthor(book) == true) {
-                    ReadBook.book = book
-                } else if (AudioPlay.book?.isSameNameAuthor(book) == true) {
-                    AudioPlay.book = book
                 }
                 book.save()
             }

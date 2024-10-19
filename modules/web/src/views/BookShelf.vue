@@ -8,9 +8,9 @@
       <div class="search-wrapper">
         <el-input
           placeholder="搜索书籍，在线书籍自动加入书架"
-          v-model="searchWord"
+          v-model="search"
           class="search-input"
-          :prefix-icon="SearchIcon"
+          :prefix-icon="Search"
           @keyup.enter="searchBook"
         >
         </el-input>
@@ -20,23 +20,19 @@
           <div class="recent-title">最近阅读</div>
           <div class="reading-recent">
             <el-tag
-              :type="
-                readingRecent.name == '尚无阅读记录' ? 'warning' : 'primary'
-              "
+              :type="readingRecent.name == '尚无阅读记录' ? 'warning' : ''"
               class="recent-book"
               size="large"
               @click="
                 toDetail(
-                  readingRecent.bookUrl,
+                  readingRecent.url,
                   readingRecent.name,
                   readingRecent.author,
                   readingRecent.chapterIndex,
                   readingRecent.chapterPos,
-                  readingRecent.isSeachBook,
-                  true,
                 )
               "
-              :class="{ 'no-point': readingRecent.bookUrl == '' }"
+              :class="{ 'no-point': readingRecent.url == '' }"
             >
               {{ readingRecent.name }}
             </el-tag>
@@ -44,14 +40,24 @@
         </div>
         <div class="setting-wrapper">
           <div class="setting-title">基本设定</div>
-          <div class="setting-item">
+          <div class="setting-ip">
+            <el-input
+              class="setting-input"
+              size="small"
+              :disabled="ipInput.disable"
+              v-model="ipInput.ip"
+              @keydown.enter="setIP"
+            />
             <el-tag
-              :type="connectType"
-              size="large"
-              class="setting-connect"
-              :class="{ 'no-point': newConnect }"
-              @click="setLegadoRetmoteUrl"
+              type="primary"
+              class="setting-toggle"
+              @click="toggleIpConfig"
             >
+              {{ ipInput.disable ? "修改" : "取消" }}
+            </el-tag>
+          </div>
+          <div class="setting-item">
+            <el-tag :type="connectType" size="large" class="setting-connect">
               {{ connectStatus }}
             </el-tag>
           </div>
@@ -78,246 +84,180 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import '@/assets/bookshelf.css'
-import '@/assets/fonts/shelffont.css'
-import { useBookStore } from '@/store'
-import githubUrl from '@/assets/imgs/github.png'
-import { useLoading } from '@/hooks/loading'
-import { Search as SearchIcon } from '@element-plus/icons-vue'
-import { baseURL_localStorage_key } from '@/api/axios'
-import API, {
-  legado_http_entry_point,
-  parseLeagdoHttpUrlWithDefault,
-  setApiEntryPoint,
-} from '@api'
-import { validatorHttpUrl } from '@/utils/utils'
-import type { Book, SeachBook } from '@/book'
-import type { webReadConfig } from '@/web'
+<script setup>
+import "@/assets/fonts/shelffont.css";
+import { useBookStore } from "@/store";
+import githubUrl from "@/assets/imgs/github.png";
+import { useLoading } from "@/hooks/loading";
+import { Search } from "@element-plus/icons-vue";
+import API from "@api";
+import { baseUrl, setRemoteIp } from "@/api/axios.js";
 
-const store = useBookStore()
-const isNight = computed(() => store.isNight)
+const store = useBookStore();
+const { connectStatus, connectType, newConnect, shelf } = storeToRefs(store);
 
-/** shortcuts of `store.setConfig` */
-const applyReadConfig = (config?: webReadConfig) => {
-  try {
-    if (config !== undefined) store.setConfig(config)
-  } catch {
-    ElMessage.info('阅读界面配置解析错误')
-  }
-}
+const theme = computed(() => {
+  return store.config.theme;
+});
+const isNight = computed(() => theme.value == 6);
 
-const readingRecent = ref<typeof store.readingBook>({
-  name: '尚无阅读记录',
-  author: '',
-  bookUrl: '',
+const readingRecent = ref({
+  name: "尚无阅读记录",
+  author: "",
+  url: "",
   chapterIndex: 0,
   chapterPos: 0,
-  isSeachBook: false,
-})
-
-const shelfWrapper = ref<HTMLElement>()
-//const shelfWrapper = useTemplateRef<HTMLElement>("shelfWrapper")
+});
+const shelfWrapper = ref(null);
 const { showLoading, closeLoading, loadingWrapper, isLoading } = useLoading(
   shelfWrapper,
-  '正在获取书籍信息',
-)
+  "正在获取书籍信息",
+);
 
-// 书架书籍和在线书籍搜索
-const books = shallowRef<Book[] | SeachBook[]>([])
-const shelf = computed(() => store.shelf)
-const searchWord = ref('')
-const isSearching = ref(false)
+const books = shallowRef([]);
+
+const search = ref("");
+const isSearching = ref(false);
 watchEffect(() => {
-  if (isSearching.value && searchWord.value != '') return
-  isSearching.value = false
-  books.value = []
-  if (searchWord.value == '') {
-    books.value = shelf.value
-    return
+  if (isSearching.value && search.value != "") return;
+  isSearching.value = false;
+  books.value = [];
+  if (search.value == "") {
+    books.value = shelf.value;
+    return;
   }
-  books.value = shelf.value.filter(book => {
+  books.value = shelf.value.filter((book) => {
     return (
-      book.name.includes(searchWord.value) ||
-      book.author.includes(searchWord.value)
-    )
-  })
-})
-//搜索在线书籍
+      book.name.includes(search.value) || book.author.includes(search.value)
+    );
+  });
+});
+
 const searchBook = () => {
-  if (searchWord.value == '') return
-  books.value = []
-  store.clearSearchBooks()
-  showLoading()
-  isSearching.value = true
+  if (search.value == "") return;
+  books.value = [];
+  store.clearSearchBooks();
+  showLoading();
+  isSearching.value = true;
   API.search(
-    searchWord.value,
-    searcBooks => {
+    search.value,
+    (data) => {
       if (isLoading) {
-        closeLoading()
+        closeLoading();
       }
       try {
-        store.setSearchBooks(searcBooks)
-        books.value = store.searchBooks
+        store.setSearchBooks(JSON.parse(data));
+        books.value = store.searchBooks;
         //store.searchBooks.forEach((item) => books.value.push(item));
       } catch (e) {
-        ElMessage.error('后端数据错误')
-        throw e
+        ElMessage.error("后端数据错误");
+        throw e;
       }
     },
     () => {
-      closeLoading()
+      closeLoading();
       if (books.value.length == 0) {
-        ElMessage.info('搜索结果为空')
+        ElMessage.info("搜索结果为空");
       }
     },
-  )
-}
+  );
+};
 
-//连接状态
-const connectStatus = computed(() => store.connectStatus)
-const connectType = computed(() => store.connectType)
-const newConnect = computed(() => store.newConnect)
-const setLegadoRetmoteUrl = () => {
-  ElMessageBox.prompt(
-    '请输入 后端地址 ( 如：http://127.0.0.1:9527 或者通过内网穿透的地址)',
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      inputPlaceholder: legado_http_entry_point,
-      inputValidator: value => validatorHttpUrl(value),
-      inputErrorMessage: '输入的格式不对',
-      beforeClose: (action, instance, done) => {
-        if (action === 'confirm') {
-          store.setNewConnect(true)
-          instance.confirmButtonLoading = true
-          instance.confirmButtonText = '校验中……'
-          // instance.inputValue
-          const url = new URL(instance.inputValue).toString()
-          API.getReadConfig(url)
-            //API.getBookShelf()
-            .then(function (config) {
-              applyReadConfig(config)
-              instance.confirmButtonLoading = false
-              store.setConnectType('success')
-              store.clearSearchBooks()
-              store.setNewConnect(false)
-              setApiEntryPoint(...parseLeagdoHttpUrlWithDefault(url))
-              if (url === location.origin) {
-                localStorage.removeItem(baseURL_localStorage_key)
-              } else {
-                localStorage.setItem(baseURL_localStorage_key, url)
-              }
-              store.setConnectStatus('已连接 ' + url.toString())
-              fetchBookShelfData()
-              done()
-            })
-            .catch(function (error) {
-              instance.confirmButtonLoading = false
-              instance.confirmButtonText = '确定'
-              ElMessage.error('访问失败，请检查您输入的 url')
-              store.setNewConnect(false)
-              throw error
-            })
-        } else {
-          done()
-        }
-      },
-    },
-  )
-}
+const ipInput = reactive({
+  ip: baseUrl(),
+  disable: true,
+});
+const toggleIpConfig = () => {
+  ipInput.ip = baseUrl();
+  ipInput.disable = !ipInput.disable;
+};
+const setIP = () => {
+  setRemoteIp(ipInput.ip);
+  ipInput.disable = true;
+  loadShelf();
+};
 
-const router = useRouter()
-const handleBookClick = async (book: SeachBook | Book) => {
-  // 判断是否为 searchBook
-  const isSeachBook = 'respondTime' in book
-  if (isSeachBook) {
-    await API.saveBook(book)
-  }
+const router = useRouter();
+const handleBookClick = async (book) => {
   const {
     bookUrl,
     name,
     author,
-    // @ts-expect-error: descruct with default value
     durChapterIndex = 0,
-    // @ts-expect-error: descruct with default value
     durChapterPos = 0,
-  } = book
-
-  toDetail(bookUrl, name, author, durChapterIndex, durChapterPos, isSeachBook)
-}
-const toDetail = (
-  bookUrl: string,
-  bookName: string,
-  bookAuthor: string,
-  chapterIndex: number,
-  chapterPos: number,
-  isSeachBook: boolean | undefined = false,
-  fromReadRecentClick = false,
-) => {
-  if (bookName === '尚无阅读记录') return
-  // 最近书籍不再书架上 自动搜索
-  if (
-    fromReadRecentClick &&
-    shelf.value.every(book => book.bookUrl !== bookUrl)
-  ) {
-    searchWord.value = bookName
-    searchBook()
-    return
-  }
-  sessionStorage.setItem('bookUrl', bookUrl)
-  sessionStorage.setItem('bookName', bookName)
-  sessionStorage.setItem('bookAuthor', bookAuthor)
-  sessionStorage.setItem('chapterIndex', String(chapterIndex))
-  sessionStorage.setItem('chapterPos', String(chapterPos))
-  sessionStorage.setItem('isSeachBook', String(isSeachBook))
+  } = book;
+  await API.saveBook(book);
+  toDetail(bookUrl, name, author, durChapterIndex, durChapterPos);
+};
+const toDetail = (bookUrl, bookName, bookAuthor, chapterIndex, chapterPos) => {
+  if (bookName === "尚无阅读记录") return;
+  sessionStorage.setItem("bookUrl", bookUrl);
+  sessionStorage.setItem("bookName", bookName);
+  sessionStorage.setItem("bookAuthor", bookAuthor);
+  sessionStorage.setItem("chapterIndex", chapterIndex);
+  sessionStorage.setItem("chapterPos", chapterPos);
   readingRecent.value = {
     name: bookName,
     author: bookAuthor,
-    bookUrl,
-    chapterIndex,
-    chapterPos,
-    isSeachBook,
-  }
-  localStorage.setItem('readingRecent', JSON.stringify(readingRecent.value))
+    url: bookUrl,
+    chapterIndex: chapterIndex,
+    chapterPos: chapterPos,
+  };
+  localStorage.setItem("readingRecent", JSON.stringify(readingRecent.value));
   router.push({
-    path: '/chapter',
-  })
-}
+    path: "/chapter",
+  });
+};
 
-const loadShelf = async () => {
-  try {
-    await store.loadWebConfig()
-    await store.saveBookProgress()
-    //确保各种网络情况下同步请求先完成
-    await fetchBookShelfData()
-  } catch (error: unknown) {
-    store.setConnectType('danger')
-    store.setConnectStatus('连接异常')
-    store.setNewConnect(false)
-    throw error
-  }
-}
-
-const fetchBookShelfData = async () => {
-  await store.loadBookShelf()
-  store.setConnectType('primary')
-  store.setConnectStatus('已连接 ' + legado_http_entry_point)
-  store.setNewConnect(false)
-}
 onMounted(() => {
   //获取最近阅读书籍
-  const readingRecentStr = localStorage.getItem('readingRecent')
+  let readingRecentStr = localStorage.getItem("readingRecent");
   if (readingRecentStr != null) {
-    readingRecent.value = JSON.parse(readingRecentStr)
-    if (typeof readingRecent.value.chapterIndex == 'undefined') {
-      readingRecent.value.chapterIndex = 0
+    readingRecent.value = JSON.parse(readingRecentStr);
+    if (typeof readingRecent.value.chapterIndex == "undefined") {
+      readingRecent.value.chapterIndex = 0;
     }
   }
-  console.log('bookshelf mounted')
-  loadingWrapper(loadShelf())
-})
+  loadShelf();
+});
+
+const loadShelf = () => {
+  store.resetConnect();
+  loadingWrapper(
+    store
+      .saveBookProgress()
+      //确保各种网络情况下同步请求先完成
+      .finally(fetchBookShelfData),
+  );
+};
+
+const fetchBookShelfData = () => {
+  return API.getBookShelf()
+    .then((response) => {
+      store.setConnectType("success");
+      if (response.data.isSuccess) {
+        //store.increaseBookNum(response.data.data.length);
+        store.addBooks(
+          response.data.data.sort(function (a, b) {
+            var x = a["durChapterTime"] || 0;
+            var y = b["durChapterTime"] || 0;
+            return y - x;
+          }),
+        );
+      } else {
+        ElMessage.error(response.data.errorMsg);
+      }
+      store.setConnectStatus("已连接 ");
+      store.setNewConnect(false);
+    })
+    .catch(function (error) {
+      store.setConnectType("danger");
+      store.setConnectStatus("连接失败");
+      ElMessage.error("后端连接失败");
+      store.setNewConnect(false);
+      throw error;
+    });
+};
 </script>
 
 <style lang="scss" scoped>
@@ -378,12 +318,12 @@ onMounted(() => {
 
         .recent-book {
           font-size: 10px;
-          /*           // font-weight: 400;
+          // font-weight: 400;
           // margin: 12px 0;
           // font-weight: 500;
-          // color: #6B7C87; */
+          // color: #6B7C87;
           cursor: pointer;
-          /*           // padding: 6px 18px; */
+          // padding: 6px 18px;
         }
       }
     }
@@ -397,15 +337,31 @@ onMounted(() => {
         font-family: FZZCYSK;
       }
 
+      .setting-ip {
+        margin-top: 16px;
+        white-space: nowrap;
+      }
+
+      .setting-input {
+        width: 216px;
+        margin-right: 4px;
+      }
+
       .no-point {
         pointer-events: none;
       }
 
-      .setting-connect {
-        font-size: 8px;
-        margin-top: 16px;
-        /*         // color: #6B7C87; */
+      .setting-toggle {
+        font-size: 10px;
         cursor: pointer;
+        //margin-top: 4px;
+      }
+
+      .setting-connect {
+        font-size: 10px;
+        margin-top: 4px;
+        // color: #6B7C87;
+        //cursor: pointer;
       }
     }
 
@@ -434,42 +390,34 @@ onMounted(() => {
   .index-wrapper {
     overflow-x: hidden;
     flex-direction: column;
-
     .navigation-wrapper {
       padding: 20px 24px;
       box-sizing: border-box;
       width: 100%;
-
       .navigation-title-wrapper {
         white-space: nowrap;
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
       }
-
       .bottom-wrapper {
         flex-direction: row;
-
         > * {
           flex-grow: 1;
           margin-top: 18px;
-
           .reading-recent,
           .setting-item {
             margin-bottom: 0px;
           }
         }
       }
-
       .bottom-icons {
         display: none;
       }
     }
-
     .shelf-wrapper {
       padding: 0;
       flex-grow: 1;
-
       :deep(.el-loading-spinner) {
         display: none;
       }
@@ -478,26 +426,22 @@ onMounted(() => {
 }
 
 .night {
-  .navigation-wrapper {
+  :deep(.navigation-wrapper) {
     background-color: #454545;
-
     .navigation-title {
       color: #aeaeae;
     }
-
     .search-wrapper {
       .search-input {
         .el-input__wrapper {
           background-color: #454545;
         }
-
         .el-input__inner {
           color: #b1b1b1;
         }
       }
     }
   }
-
   :deep(.shelf-wrapper) {
     background-color: #161819;
   }

@@ -14,16 +14,14 @@ import androidx.annotation.ColorInt
 import androidx.annotation.StyleRes
 import androidx.appcompat.widget.Toolbar
 import androidx.core.graphics.alpha
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.children
 import com.google.android.material.appbar.AppBarLayout
 import io.legado.app.R
 import io.legado.app.lib.theme.elevation
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.utils.activity
-import splitties.views.bottomPadding
-import splitties.views.topPadding
+import io.legado.app.utils.navigationBarHeight
+import io.legado.app.utils.statusBarHeight
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 class TitleBar @JvmOverloads constructor(
@@ -155,25 +153,12 @@ class TitleBar @JvmOverloads constructor(
         }
 
         if (!isInEditMode) {
-//            if (fitStatusBar) {
-//                setPadding(paddingLeft, context.statusBarHeight, paddingRight, paddingBottom)
-//            }
-//
-//            if (fitNavigationBar) {
-//                setPadding(paddingLeft, paddingTop, paddingRight, context.navigationBarHeight)
-//            }
+            if (fitStatusBar) {
+                setPadding(paddingLeft, context.statusBarHeight, paddingRight, paddingBottom)
+            }
 
-            if (fitStatusBar || fitNavigationBar) {
-                ViewCompat.setOnApplyWindowInsetsListener(this) { _, windowInsets ->
-                    val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                    if (fitStatusBar) {
-                        topPadding = insets.top
-                    }
-                    if (fitNavigationBar) {
-                        bottomPadding = insets.bottom
-                    }
-                    windowInsets
-                }
+            if (fitNavigationBar) {
+                setPadding(paddingLeft, paddingTop, paddingRight, context.navigationBarHeight)
             }
 
             setBackgroundColor(context.primaryColor)
@@ -251,10 +236,8 @@ class TitleBar @JvmOverloads constructor(
     }
 
     fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, fullScreen: Boolean) {
-//        if (fitStatusBar) {
-//            val topPadding = if (!isInMultiWindowMode && fullScreen) context.statusBarHeight else 0
-//            setPadding(paddingLeft, topPadding, paddingRight, paddingBottom)
-//        }
+        val topPadding = if (!isInMultiWindowMode && fullScreen) context.statusBarHeight else 0
+        setPadding(paddingLeft, topPadding, paddingRight, paddingBottom)
     }
 
     private fun attachToActivity() {
