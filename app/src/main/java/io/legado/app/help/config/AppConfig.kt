@@ -290,7 +290,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         }
 
     var elevation: Int
-        get() = appCtx.getPrefInt(PreferKey.barElevation, AppConst.sysElevation)
+        get() = if (isEInkMode) 0 else appCtx.getPrefInt(
+            PreferKey.barElevation,
+            AppConst.sysElevation
+        )
         set(value) {
             appCtx.putPrefInt(PreferKey.barElevation, value)
         }
@@ -376,6 +379,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefBoolean(PreferKey.tocUiUseReplace)
         set(value) {
             appCtx.putPrefBoolean(PreferKey.tocUiUseReplace, value)
+        }
+
+    var tocCountWords: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.tocCountWords, true)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.tocCountWords, value)
         }
 
     var enableReadRecord: Boolean

@@ -34,6 +34,8 @@ import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.applyNavigationBarMargin
+import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.gone
@@ -52,7 +54,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import splitties.init.appCtx
-import kotlin.math.abs
 
 class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel>(),
     BookAdapter.CallBack,
@@ -211,11 +212,14 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         binding.rvHistoryKey.setEdgeEffectColor(primaryColor)
         binding.rvBookshelfSearch.layoutManager = FlexboxLayoutManager(this)
         binding.rvBookshelfSearch.adapter = bookAdapter
+        binding.rvBookshelfSearch.applyNavigationBarMargin()
         binding.rvHistoryKey.layoutManager = FlexboxLayoutManager(this)
         binding.rvHistoryKey.adapter = historyKeyAdapter
+        binding.rvHistoryKey.applyNavigationBarMargin()
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
         binding.recyclerView.itemAnimator = null
+        binding.recyclerView.applyNavigationBarPadding()
         adapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 super.onItemRangeInserted(positionStart, itemCount)
@@ -235,20 +239,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
                 if (!recyclerView.canScrollVertically(1)) {
-                    val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-                    val lastPosition = layoutManager.findLastCompletelyVisibleItemPosition()
-                    if (lastPosition == RecyclerView.NO_POSITION) {
-                        return
-                    }
-                    val lastView = layoutManager.findViewByPosition(lastPosition)
-                    if (lastView == null) {
-                        scrollToBottom()
-                        return
-                    }
-                    val bottom = abs(lastView.bottom - recyclerView.height)
-                    if (bottom <= 1) {
-                        scrollToBottom()
-                    }
+                    scrollToBottom()
                 }
             }
         })
@@ -319,6 +310,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         }
         if (viewModel.isSearchLiveData.value == false
             && viewModel.searchKey.isNotEmpty()
+            && viewModel.hasMore
         ) {
             viewModel.search("")
         }
@@ -402,8 +394,9 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
             if (!isEmpty || viewModel.searchScope.isAll()) return@observe
             alert("搜索结果为空") {
                 val precisionSearch = appCtx.getPrefBoolean(PreferKey.precisionSearch)
+                val displayScope = viewModel.searchScope.display
                 if (precisionSearch) {
-                    setMessage("${viewModel.searchScope.display}分组搜索结果为空，是否关闭精准搜索？")
+                    setMessage("${displayScope}分组搜索结果为空，是否关闭精准搜索？")
                     yesButton {
                         appCtx.putPrefBoolean(PreferKey.precisionSearch, false)
                         precisionSearchMenuItem?.isChecked = false
@@ -411,7 +404,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                         viewModel.search(searchView.query.toString())
                     }
                 } else {
-                    setMessage("${viewModel.searchScope.display}分组搜索结果为空，是否切换到全部分组？")
+                    setMessage("${displayScope}分组搜索结果为空，是否切换到全部分组？")
                     yesButton {
                         viewModel.searchScope.update("")
                     }
